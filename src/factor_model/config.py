@@ -1,0 +1,155 @@
+"""Engine configuration: every ambiguous research decision lives here,
+in YAML, with a recommended default and reasoning in
+``docs/research_assumptions.md`` -- never hardcoded in source.
+
+Plain ``@dataclass`` throughout, matching the house style already used
+across this portfolio's other repos (``alpha-validation-toolkit``'s
+``OLSResult``/``PurgedWalkForward``), rather than introducing pydantic
+as a new dependency this stage doesn't strictly need.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import yaml
+
+
+@dataclass(frozen=True)
+class RunConfig:
+    output_dir: str = "outputs"
+    random_seed: int = 1337
+
+
+@dataclass(frozen=True)
+class DataConfig:
+    # RESEARCH ASSUMPTION -- typical US 10-Q filing lag; see docs/research_assumptions.md
+    fundamental_publication_lag_days: int = 45
+    # RESEARCH ASSUMPTION -- minimum real trading history for universe eligibility
+    min_price_history_days: int = 252
+    # RESEARCH ASSUMPTION -- fundamentals older than this are flagged stale
+    stale_fundamentals_after_days: int = 190
+
+    def __post_init__(self) -> None:
+        if self.fundamental_publication_lag_days < 0:
+            raise ValueError("fundamental_publication_lag_days cannot be negative")
+        if self.min_price_history_days < 1:
+            raise ValueError("min_price_history_days must be >= 1")
+        if self.stale_fundamentals_after_days < 1:
+            raise ValueError("stale_fundamentals_after_days must be >= 1")
+
+
+@dataclass(frozen=True)
+class UniverseConfig:
+    # RESEARCH ASSUMPTION -- liquidity/size filter
+    min_market_cap: float = 1.0e8
+    # RESEARCH ASSUMPTION -- liquidity filter
+    min_adv_usd: float = 1.0e6
+    # RESEARCH ASSUMPTION -- sector exclusions, none by default
+    excluded_sectors: tuple[str, ...] = field(default_factory=tuple)
+
+    def __post_init__(self) -> None:
+        if self.min_market_cap < 0:
+            raise ValueError("min_market_cap cannot be negative")
+        if self.min_adv_usd < 0:
+            raise ValueError("min_adv_usd cannot be negative")
+
+
+@dataclass(frozen=True)
+class WinsorizationConfig:
+    # RESEARCH ASSUMPTION -- tail-trim aggressiveness
+    lower_pct: float = 0.01
+    upper_pct: float = 0.99
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.lower_pct < self.upper_pct <= 1:
+            raise ValueError("require 0 <= lower_pct < upper_pct <= 1")
+
+
+@dataclass(frozen=True)
+class StandardizationConfig:
+    # RESEARCH ASSUMPTION -- zscore vs. rank vs. min-max
+    method: str = "zscore"
+
+    def __post_init__(self) -> None:
+        if self.method not in ("zscore", "rank", "minmax"):
+            raise ValueError(f"unknown standardization method: {self.method!r}")
+
+
+@dataclass(frozen=True)
+class MomentumConfig:
+    # RESEARCH ASSUMPTION -- classic 12-1 convention; configurable, never hardcoded elsewhere
+    lookback_months: int = 12
+    skip_recent_months: int = 1
+
+    def __post_init__(self) -> None:
+        if self.lookback_months < 1:
+            raise ValueError("lookback_months must be >= 1")
+        if self.skip_recent_months < 0:
+            raise ValueError("skip_recent_months cannot be negative")
+        if self.skip_recent_months >= self.lookback_months:
+            raise ValueError("skip_recent_months must be smaller than lookback_months")
+
+
+@dataclass(frozen=True)
+class FactorConfig:
+    winsorization: WinsorizationConfig = field(default_factory=WinsorizationConfig)
+    standardization: StandardizationConfig = field(default_factory=StandardizationConfig)
+    momentum: MomentumConfig = field(default_factory=MomentumConfig)
+
+
+@dataclass(frozen=True)
+class DiagnosticsConfig:
+    # RESEARCH ASSUMPTION
+    max_allowed_missingness_pct: float = 0.10
+    # RESEARCH ASSUMPTION -- below this, warn "too small to trust"
+    min_cross_section_size: int = 20
+
+    def __post_init__(self) -> None:
+        if not 0 <= self.max_allowed_missingness_pct <= 1:
+            raise ValueError("max_allowed_missingness_pct must be in [0, 1]")
+        if self.min_cross_section_size < 1:
+            raise ValueError("min_cross_section_size must be >= 1")
+
+
+@dataclass(frozen=True)
+class EngineConfig:
+    run: RunConfig = field(default_factory=RunConfig)
+    data: DataConfig = field(default_factory=DataConfig)
+    universe: UniverseConfig = field(default_factory=UniverseConfig)
+    factors: FactorConfig = field(default_factory=FactorConfig)
+    diagnostics: DiagnosticsConfig = field(default_factory=DiagnosticsConfig)
+
+
+def load_config(path: str) -> EngineConfig:
+    """Load a real YAML config file into a validated EngineConfig.
+    Missing sections fall back to each dataclass's own documented
+    default -- never a silent empty/zero value."""
+    with open(path) as f:
+        raw = yaml.safe_load(f) or {}
+
+    run = RunConfig(**raw.get("run", {}))
+    data = DataConfig(**raw.get("data", {}))
+
+    # PyYAML's float resolver requires a SIGNED exponent ("1.0e+8"); an
+    # unsigned exponent ("1.0e8") is silently parsed as a plain string,
+    # not a float -- coerce explicitly here so a future config edit that
+    # drops the sign fails with a clear ValueError, not a confusing
+    # TypeError deep inside a dataclass comparison.
+    universe_raw = dict(raw.get("universe", {}))
+    for numeric_field in ("min_market_cap", "min_adv_usd"):
+        if numeric_field in universe_raw:
+            universe_raw[numeric_field] = float(universe_raw[numeric_field])
+    if "excluded_sectors" in universe_raw:
+        universe_raw["excluded_sectors"] = tuple(universe_raw["excluded_sectors"])
+    universe = UniverseConfig(**universe_raw)
+
+    factors_raw = raw.get("factors", {})
+    winsorization = WinsorizationConfig(**factors_raw.get("winsorization", {}))
+    standardization = StandardizationConfig(**factors_raw.get("standardization", {}))
+    momentum = MomentumConfig(**factors_raw.get("momentum", {}))
+    factors = FactorConfig(winsorization=winsorization, standardization=standardization, momentum=momentum)
+
+    diagnostics = DiagnosticsConfig(**raw.get("diagnostics", {}))
+
+    return EngineConfig(run=run, data=data, universe=universe, factors=factors, diagnostics=diagnostics)

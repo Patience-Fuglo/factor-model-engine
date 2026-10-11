@@ -1,0 +1,28 @@
+# Synthetic test-fixture parameters -- these are NOT research assumptions
+# about real markets; they size and seed a deterministic demonstration
+# dataset with a known ground-truth factor structure, used so this repo
+# is runnable without any proprietary data.
+
+n_securities: 50
+n_sectors: 5
+n_periods_months: 60
+start_date: "2016-01-31"
+base_seed: 1337
+
+factor_loadings:
+  momentum: 0.5
+  value: 0.3
+
+momentum_persistence: 0.85
+value_persistence: 0.95
+return_scale_monthly: 0.08
+target_r_squared: 0.30
+fundamentals_update_every_n_months: 3
+
+restatement_scenario:
+  enabled: true
+  security_index: 7
+  period_index: 23   # must land on a real fundamental-reporting period (t % 3 == 2)
+  restated_multiplier: 1.4
+  original_lag_days: 45
+  restated_lag_days: 200

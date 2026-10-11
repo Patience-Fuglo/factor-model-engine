@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "factor-model-engine"
+version = "0.1.0"
+description = "Professional factor-model research system: point-in-time universe construction, factor exposures, neutralization, factor returns, portfolio risk decomposition, attribution"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.23",
+    "pyyaml>=6.0",
+    "alpha-validation-toolkit @ git+https://github.com/Patience-Fuglo/alpha-validation-toolkit.git",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4"]
+
+[tool.setuptools.packages.find]
+where = ["src"]

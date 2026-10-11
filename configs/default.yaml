@@ -1,0 +1,31 @@
+# Engine-wide configuration. Every field tagged RESEARCH ASSUMPTION in
+# docs/research_assumptions.md needs the researcher's explicit sign-off --
+# these are modeling choices, not safe engineering defaults.
+
+run:
+  output_dir: "outputs"
+  random_seed: 1337
+
+data:
+  fundamental_publication_lag_days: 45   # RESEARCH ASSUMPTION
+  min_price_history_days: 252            # RESEARCH ASSUMPTION
+  stale_fundamentals_after_days: 190     # RESEARCH ASSUMPTION
+
+universe:
+  min_market_cap: 1.0e+8                 # RESEARCH ASSUMPTION
+  min_adv_usd: 1.0e+6                    # RESEARCH ASSUMPTION
+  excluded_sectors: []                   # RESEARCH ASSUMPTION
+
+factors:
+  winsorization:
+    lower_pct: 0.01                      # RESEARCH ASSUMPTION
+    upper_pct: 0.99                       # RESEARCH ASSUMPTION
+  standardization:
+    method: "zscore"                      # RESEARCH ASSUMPTION
+  momentum:
+    lookback_months: 12                   # RESEARCH ASSUMPTION -- classic 12-1
+    skip_recent_months: 1                 # RESEARCH ASSUMPTION
+
+diagnostics:
+  max_allowed_missingness_pct: 0.10       # RESEARCH ASSUMPTION
+  min_cross_section_size: 20              # RESEARCH ASSUMPTION
