@@ -70,6 +70,15 @@ otherwise contaminate a momentum signal. Deliberately kept configurable in
 `MomentumConfig` rather than hardcoded, since a researcher may legitimately
 want a different window for a different universe or horizon.
 
+**`quality.profitability_weight: 0.5`, `quality.leverage_weight: 0.5`**
+Equal-weighted by default between the profitability pillar (`EPS/BVPS`, a
+real ROE proxy) and the leverage/safety pillar (`-total_debt/total_assets`).
+Both pillars are standardized before combining (see
+`docs/data_dictionary.md`), so these weights are a genuine mixing
+decision — not a unit-conversion fudge. A researcher who believes
+profitability is the more reliable quality signal for a given universe
+could reasonably raise `profitability_weight` above 0.5.
+
 ## Diagnostics (`diagnostics:`)
 
 **`max_allowed_missingness_pct: 0.10`**

@@ -25,6 +25,9 @@ factors:
   momentum:
     lookback_months: 12                   # RESEARCH ASSUMPTION -- classic 12-1
     skip_recent_months: 1                 # RESEARCH ASSUMPTION
+  quality:
+    profitability_weight: 0.5             # RESEARCH ASSUMPTION
+    leverage_weight: 0.5                  # RESEARCH ASSUMPTION
 
 diagnostics:
   max_allowed_missingness_pct: 0.10       # RESEARCH ASSUMPTION

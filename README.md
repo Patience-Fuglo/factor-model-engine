@@ -5,13 +5,16 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-This is **Stage 1 of 10**: the repository's data foundation — schemas,
-point-in-time semantics, universe construction, cross-sectional transforms,
-two basic factors, data-health diagnostics, and a deterministic synthetic
-dataset with a known ground-truth factor structure. Stages 2–10 (factor
-library expansion, exposures, neutralization, factor-return regression,
-portfolio/risk, attribution, regimes/monitoring, reporting, hardening) are
-intentionally stubbed (`__init__.py` only) and out of scope for this stage.
+**Stages 1–2 of 10 are complete**: the repository's data foundation
+(schemas, point-in-time semantics, universe construction, cross-sectional
+transforms, a deterministic synthetic dataset with a known ground-truth
+factor structure) and a four-factor library (Momentum, Value, Size,
+Quality) that builds the full point-in-time Factor Exposure Table. See
+[`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build status.
+Stages 3–10 (exposure aggregation, neutralization, factor-return
+regression, portfolio/risk, attribution, regimes/monitoring, reporting,
+hardening) are intentionally stubbed (`__init__.py` only) and out of scope
+so far.
 
 ## Data
 
@@ -60,6 +63,7 @@ python -m pytest tests/ -v
 
 python scripts/generate_synthetic_dataset.py
 python scripts/run_data_health_report.py --as-of 2020-12-31
+python scripts/build_factor_table.py --as-of 2020-06-30
 ```
 
 ## Repository layout
@@ -81,11 +85,17 @@ src/factor_model/
     transforms.py           # winsorize(), standardize()
     price_based.py           # compute_momentum()
     fundamental_based.py      # compute_book_to_price()
+    size_based.py              # compute_size() -- log(market_cap)
+    quality_based.py            # compute_profitability(), compute_leverage(),
+                                 # compute_quality_composite()
+    factor_library.py            # compute_factor_exposure_table() -- the
+                                  # Stage 2 engine; builds the full Stock x
+                                  # Date x Factor table
   diagnostics/
     data_health.py           # coverage/missingness/staleness/duplicate/
                               # outlier checks -- warns, never silently fixes
   exposures/, neutralization/, regression/, risk/, attribution/,
-  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 2+
+  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 3+
 
 tests/
   unit/           # schemas, config, synthetic data, point-in-time,
@@ -98,6 +108,8 @@ tests/
 scripts/
   generate_synthetic_dataset.py   # writes outputs/synthetic/*.csv + metadata.json
   run_data_health_report.py        # writes outputs/reports/data_health_<as_of>.json
+  build_factor_table.py             # writes outputs/factors/factor_table_<as_of>.csv
+                                     # + factor_library_report_<as_of>.json
 
 docs/
   research_assumptions.md   # every configurable research judgment call

@@ -13,7 +13,7 @@ from typing import Sequence, TypeVar
 
 import pandas as pd
 
-from .schemas import FundamentalObservation
+from .schemas import FundamentalObservation, MarketObservation
 
 _Observation = TypeVar("_Observation")
 
@@ -54,3 +54,34 @@ def latest_known_fundamental(
     if not candidates:
         return None
     return max(candidates, key=lambda obs: obs.known_as_of)
+
+
+def latest_known_market(
+    observations: Sequence[MarketObservation], security_id: str, as_of: pd.Timestamp
+) -> MarketObservation | None:
+    """The most recent real ``MarketObservation`` for ``security_id`` that
+    is both knowable (``known_as_of <= as_of``) and dated on or before
+    ``as_of`` -- never a future row used as if it were today's reading.
+    """
+    candidates = [
+        obs for obs in observations if obs.security_id == security_id and obs.known_as_of <= as_of and obs.as_of <= as_of
+    ]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda obs: obs.as_of)
+
+
+def latest_known_fundamental_any_period(
+    observations: Sequence[FundamentalObservation], security_id: str, as_of: pd.Timestamp
+) -> FundamentalObservation | None:
+    """"This security's current real fundamentals" as of ``as_of``: among
+    every real vintage knowable by ``as_of`` (any fiscal period), finds
+    the most RECENT fiscal period covered, then resolves it through
+    ``latest_known_fundamental`` -- so a stale earlier period's filing is
+    never returned just because it happens to have a later-dated vintage.
+    """
+    knowable = [obs for obs in observations if obs.security_id == security_id and obs.known_as_of <= as_of]
+    if not knowable:
+        return None
+    latest_period_end = max(obs.fundamental_period_end for obs in knowable)
+    return latest_known_fundamental(observations, security_id, latest_period_end, as_of)

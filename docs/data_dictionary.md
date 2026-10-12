@@ -35,6 +35,8 @@ vintages over time (restatements) — this is expected, not an error.
 | `known_as_of` | `Timestamp` | When *this specific vintage* became knowable. Its own, independent field — genuinely distinct from, and never to be confused with, `MarketObservation.known_as_of` on the same security and date, since fundamental publication lag and market-data availability are different real processes. Must be `>= fundamental_period_end` — the constructor raises otherwise. Ideally a real vendor filing timestamp; `data.fundamental_publication_lag_days` is a fallback only (see `docs/research_assumptions.md`). |
 | `book_value_per_share` | `float \| None` | `None` on real missing data — never zero-filled. |
 | `earnings_per_share` | `float \| None` | Same. |
+| `total_assets` | `float \| None` | Stage 2 addition. Real balance-sheet total assets from the SAME filing/vintage — shares this row's one `known_as_of`, never a separate timestamp (one real 10-Q/10-K reports its whole balance sheet together). `None` on missing, never zero-filled. |
+| `total_debt` | `float \| None` | Stage 2 addition. Same vintage as above. |
 | `quality_flags` | `tuple[str, ...]` | e.g. `"restated"`, `"estimated_known_as_of"`. |
 
 To resolve "which vintage would a researcher at a given `as_of` have
@@ -73,8 +75,10 @@ has, as of a date. **Never a return or P&L figure** — see
 | `subject_id` | `str` | A `security_id`, `signal_name`, or `portfolio_id`, depending on `subject_type`. |
 | `as_of` | `Timestamp` | |
 | `factor_name` | `str` | |
-| `exposure_value` | `float` | |
+| `exposure_value` | `float` | The cross-sectionally STANDARDIZED score — what any downstream consumer should use. |
 | `source_known_as_of` | `Timestamp` | When the underlying inputs this exposure was computed from were themselves knowable — propagates the PIT chain, rather than letting it end at this row. |
+| `raw_value` | `float \| None` | Stage 2 addition. The real pre-standardization value (e.g. an actual book-to-price ratio, or log market cap). `None` for a composite factor with no single natural raw figure (Stage 2's Quality) or when the underlying inputs were missing. |
+| `quality_flags` | `tuple[str, ...]` | Stage 2 addition. This ROW's own data-quality state (e.g. `"missing_raw_value"`, `"standardization_unavailable"`) — distinct from the flags already carried on the raw observation(s) it was derived from. |
 
 ## `FactorAttributionRow`
 
@@ -95,6 +99,20 @@ now"; attribution is "how much did that tilt earn over this period."
 | `contribution_to_return` | `float` | `exposure_at_period_start * factor_return_over_period` — a **linear approximation**, documented explicitly as such, not an exact P&L decomposition. Later stages may refine this. |
 | `is_residual` | `bool` | `True` for the stock-specific/unexplained row, when included. |
 
+## Stage 2 factor formulas (`factors/`)
+
+| Factor | Raw formula | Standardization input | Notes |
+|---|---|---|---|
+| Momentum | `compute_momentum`: return from `t-lookback_months` to `t-skip_recent_months` on the security's own point-in-time price history | winsorize -> zscore | Reused unchanged from Stage 1. |
+| Value | `compute_book_to_price`: `book_value_per_share / price` | winsorize -> zscore | Reused unchanged from Stage 1; `book_value_per_share` from the latest knowable fundamental vintage (any period), `price` from the latest knowable market observation, both resolved via `point_in_time.latest_known_fundamental_any_period`/`latest_known_market`. |
+| Size | `compute_size`: `log(market_cap)` | winsorize -> zscore | New in Stage 2. The log transform IS the factor's definition — it happens before winsorization/standardization, not after. |
+| Quality | `compute_quality_composite`: weighted average of standardized `compute_profitability` (`EPS / BVPS`, a real ROE proxy) and standardized `-compute_leverage` (`-total_debt / total_assets`, "safety") | each pillar winsorized -> zscored BEFORE combining | New in Stage 2. Combining ALREADY standardized pillars (not raw ratios) prevents whichever pillar has the larger raw scale from silently dominating. Falls back to whichever single pillar is real when the other is missing, weighted by that pillar's own configured weight. |
+
+Every factor is computed only from observations knowable at the query
+`as_of` (`latest_known_market`/`latest_known_fundamental_any_period`,
+and `_price_series`'s own `as_of <= query as_of` filter for Momentum's
+price history) — no factor ever reads a future observation.
+
 ## Synthetic dataset outputs (`data/synthetic.py`)
 
 Three tables produced by `generate_synthetic_dataset`, always labeled
@@ -104,6 +122,10 @@ synthetic/non-proprietary, never consumed as if they were real market data:
 - `fundamentals` — flattens to `FundamentalObservation` rows via `fundamental_observations_from_frame`.
 - `ground_truth` — `momentum_score`/`value_score`: the cross-sectionally
   z-scored latent factors actually used to construct `realized_return`.
-  Consumed only by tests/notebooks checking recoverability — **never** by
-  any production pipeline code, keeping the generator's own "answer key"
-  isolated from anything resembling a real-data adapter.
+  `quality_score` (Stage 2 addition): an independent latent factor that
+  drives `total_assets`/`total_debt` ONLY — deliberately never wired into
+  `realized_return`, so Stage 1's price/return formula (and every
+  golden-pinned value derived from it) stays untouched. Consumed only by
+  tests/notebooks checking recoverability — **never** by any production
+  pipeline code, keeping the generator's own "answer key" isolated from
+  anything resembling a real-data adapter.

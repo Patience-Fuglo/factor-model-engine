@@ -21,8 +21,11 @@ def _dataset():
 def test_golden_shapes_are_pinned():
     ds = _dataset()
     assert ds.market.shape == (240, 11)
-    assert ds.fundamentals.shape == (81, 6)
-    assert ds.ground_truth.shape == (240, 4)
+    # Stage 2 added total_assets/total_debt (fundamentals) and
+    # quality_score (ground_truth) -- all other Stage 1 shapes/values
+    # (asserted below and in the other golden tests) stayed byte-identical
+    assert ds.fundamentals.shape == (81, 8)
+    assert ds.ground_truth.shape == (240, 5)
 
 
 def test_golden_market_summary_statistics_are_pinned():
@@ -37,6 +40,9 @@ def test_golden_fundamentals_summary_statistics_are_pinned():
     ds = _dataset()
     assert ds.fundamentals["book_value_per_share"].mean() == pytest.approx(27.5630918, abs=1e-6)
     assert ds.fundamentals["earnings_per_share"].mean() == pytest.approx(4.83021619, abs=1e-6)
+    # Stage 2 additions
+    assert ds.fundamentals["total_assets"].mean() == pytest.approx(1474869643.939799, rel=1e-9)
+    assert ds.fundamentals["total_debt"].mean() == pytest.approx(452711997.243794, rel=1e-9)
 
 
 def test_golden_ground_truth_cross_sectional_scores_are_pinned_zero_mean():
@@ -45,6 +51,7 @@ def test_golden_ground_truth_cross_sectional_scores_are_pinned_zero_mean():
     ds = _dataset()
     assert ds.ground_truth["momentum_score"].mean() == pytest.approx(0.0, abs=1e-9)
     assert ds.ground_truth["value_score"].mean() == pytest.approx(0.0, abs=1e-9)
+    assert ds.ground_truth["quality_score"].mean() == pytest.approx(0.0, abs=1e-9)
 
 
 def test_golden_first_and_last_market_row_are_pinned():

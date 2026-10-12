@@ -52,6 +52,19 @@ class ExclusionReason(str, Enum):
     MANUALLY_EXCLUDED = "manually_excluded"
 
 
+class FactorName(str, Enum):
+    """Canonical factor names for Stage 2's factor library. Kept as a
+    plain string on ``FactorExposureRow.factor_name`` (not this enum
+    directly), so later stages can introduce composite/custom factor
+    names without a schema change -- this enum is the recommended,
+    type-checked vocabulary for Stage 2's own four factors only."""
+
+    MOMENTUM = "momentum"
+    VALUE = "value"
+    SIZE = "size"
+    QUALITY = "quality"
+
+
 class ExposureSubject(str, Enum):
     """Who/what a FactorExposureRow or FactorAttributionRow is measured
     for -- the same three subject kinds apply to both, but exposure and
@@ -121,6 +134,17 @@ class FundamentalObservation:
     book_value_per_share: float | None
     earnings_per_share: float | None
     quality_flags: tuple[str, ...] = field(default_factory=tuple)
+    # Stage 2 addition, both optional and defaulted (None) for backward
+    # compatibility -- real balance-sheet figures from the SAME filing/
+    # vintage as book_value_per_share/earnings_per_share above, so they
+    # share this vintage's one known_as_of rather than needing their own:
+    # a single real 10-Q/10-K reports its whole balance sheet and income
+    # statement together, at one real publication timestamp. A genuinely
+    # different fundamentals feed with its own cadence (e.g. a separate
+    # analyst-estimate source) would need its own FundamentalObservation-
+    # like type with its own known_as_of -- never bolted on here.
+    total_assets: float | None = None
+    total_debt: float | None = None
 
     def __post_init__(self) -> None:
         if self.known_as_of < self.fundamental_period_end:
@@ -170,6 +194,16 @@ class FactorExposureRow:
     factor_name: str
     exposure_value: float
     source_known_as_of: pd.Timestamp
+    # Stage 2 addition, both defaulted for backward compatibility.
+    # ``raw_value`` is the factor's real pre-standardization value (e.g. a
+    # real book-to-price ratio); ``exposure_value`` above remains the
+    # cross-sectionally STANDARDIZED score actually used downstream.
+    # ``quality_flags`` carries this specific row's own data-quality
+    # state (e.g. "missing_raw_value") -- distinct from, and not a
+    # substitute for, the flags already carried on the raw
+    # MarketObservation/FundamentalObservation this row was derived from.
+    raw_value: float | None = None
+    quality_flags: tuple[str, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)

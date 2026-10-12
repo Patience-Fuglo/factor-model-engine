@@ -92,10 +92,27 @@ class MomentumConfig:
 
 
 @dataclass(frozen=True)
+class QualityConfig:
+    # RESEARCH ASSUMPTION -- equal-weighted profitability/safety composite by
+    # default; both sub-measures are already cross-sectionally standardized
+    # before combining, so these weights are a real mixing choice, not a
+    # unit-conversion fudge
+    profitability_weight: float = 0.5
+    leverage_weight: float = 0.5
+
+    def __post_init__(self) -> None:
+        if self.profitability_weight < 0 or self.leverage_weight < 0:
+            raise ValueError("quality component weights cannot be negative")
+        if self.profitability_weight + self.leverage_weight == 0:
+            raise ValueError("at least one quality component weight must be positive")
+
+
+@dataclass(frozen=True)
 class FactorConfig:
     winsorization: WinsorizationConfig = field(default_factory=WinsorizationConfig)
     standardization: StandardizationConfig = field(default_factory=StandardizationConfig)
     momentum: MomentumConfig = field(default_factory=MomentumConfig)
+    quality: QualityConfig = field(default_factory=QualityConfig)
 
 
 @dataclass(frozen=True)
@@ -148,7 +165,10 @@ def load_config(path: str) -> EngineConfig:
     winsorization = WinsorizationConfig(**factors_raw.get("winsorization", {}))
     standardization = StandardizationConfig(**factors_raw.get("standardization", {}))
     momentum = MomentumConfig(**factors_raw.get("momentum", {}))
-    factors = FactorConfig(winsorization=winsorization, standardization=standardization, momentum=momentum)
+    quality = QualityConfig(**factors_raw.get("quality", {}))
+    factors = FactorConfig(
+        winsorization=winsorization, standardization=standardization, momentum=momentum, quality=quality
+    )
 
     diagnostics = DiagnosticsConfig(**raw.get("diagnostics", {}))
 
