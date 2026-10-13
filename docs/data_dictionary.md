@@ -120,6 +120,30 @@ SIGNAL/PORTFOLIO-level `FactorExposureRow` per factor -- see
 `src/factor_model/exposures/portfolio_exposure.py` for the real
 re-normalization and missing-coverage rules.
 
+## `FactorReturnRow` (Stage 5)
+
+A real factor's realized return over `[period_start, period_end]`,
+estimated via cross-sectional OLS of realized stock returns on each
+stock's exposure AS OF `period_start` (lagged). Structurally separate
+from `FactorExposureRow` (a characteristic, not a return) and from
+`FactorAttributionRow` (which consumes this row, combined with a
+subject's own exposure, to compute that subject's P&L share).
+
+| Field | Type | Notes |
+|---|---|---|
+| `period_start` / `period_end` | `Timestamp` | `period_end` must be after `period_start`. |
+| `factor_name` | `str` | |
+| `factor_return` | `float` | The regression beta for this factor over the period. |
+| `r_squared` | `float` | From the joint multi-factor regression that period. |
+| `n_obs` | `int` | Real securities used in that period's regression. |
+| `known_as_of` | `Timestamp` | `== period_end` — this factor return needs the period's realized prices to exist at all; must be `>= period_end`. |
+
+**Documented finding:** the synthetic Value factor's correlation with
+its own planted `value_score` reverses sign over a long backtest, due
+to a real compounding confound (price, the ratio's denominator, is
+itself partly driven by `value_score`) — see `docs/STATUS.md` Stage 5
+for the full investigation. Momentum does not share this issue.
+
 ## Stage 4 -- Neutralization (`neutralization/neutralize.py`)
 
 `neutralize_signal(signal_scores, factor_exposures, factors_to_neutralize)`

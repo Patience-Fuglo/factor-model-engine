@@ -236,6 +236,44 @@ class FactorExposureRow:
 
 
 @dataclass(frozen=True)
+class FactorReturnRow:
+    """One real factor's realized return over ``[period_start,
+    period_end]``, estimated via a real cross-sectional regression of
+    REALIZED stock returns over that period on each stock's real
+    exposure AS OF ``period_start`` -- lagged, never ``period_end``'s
+    exposure, which would let the regression "see" a characteristic
+    that was not actually knowable before the period's return was
+    realized (the real reason a Fama-MacBeth-style regression lags its
+    right-hand side).
+
+    Structurally separate from ``FactorExposureRow`` (a point-in-time
+    characteristic, not a return) and from ``FactorAttributionRow``
+    (which CONSUMES this factor return, combined with a subject's own
+    exposure, to compute that subject's P&L contribution -- this row is
+    the market-wide factor return itself, not any one subject's share
+    of it).
+    """
+
+    period_start: pd.Timestamp
+    period_end: pd.Timestamp
+    factor_name: str
+    factor_return: float
+    r_squared: float
+    n_obs: int
+    known_as_of: pd.Timestamp
+
+    def __post_init__(self) -> None:
+        if self.period_end <= self.period_start:
+            raise ValueError(f"{self.factor_name}: period_end must be after period_start")
+        if self.known_as_of < self.period_end:
+            raise ValueError(
+                f"{self.factor_name}: known_as_of ({self.known_as_of}) cannot precede "
+                f"period_end ({self.period_end}) -- this factor return needs period_end's "
+                "realized prices to even be computable"
+            )
+
+
+@dataclass(frozen=True)
 class FactorAttributionRow:
     """A derived P&L contribution: how much did ``factor_name`` contribute
     to what ``subject_id`` actually earned over [period_start,

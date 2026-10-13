@@ -1,3 +1,3 @@
-"""regression -- implemented in a later stage. Stage 1 only establishes the
-repository structure and the schemas/conventions this module will
-build on (see src/factor_model/data/schemas.py)."""
+from .factor_returns import compute_factor_returns, factor_return_rows_to_frame
+
+__all__ = ["compute_factor_returns", "factor_return_rows_to_frame"]

@@ -93,13 +93,47 @@ hypothetically.
 7 new tests (6 unit + 1 integration on the real synthetic dataset; 114
 total, was 107). New CLI: `scripts/neutralize_signal.py`. Pushed.
 
-## Next up: Stage 5 -- Factor Returns
+## Stage 5 -- Factor Returns: COMPLETE
 
-Cross-sectional regression of realized returns on LAGGED (period-start)
-factor exposures, per period -> a new `FactorReturnRow` time series +
-regression diagnostics. Feeds Stages 6 and 7.
+Added `FactorReturnRow` schema (period_start, period_end, factor_name,
+factor_return, r_squared, n_obs, known_as_of) and
+`regression/factor_returns.py` (`compute_factor_returns`): a real
+Fama-MacBeth-style cross-sectional regression -- for each consecutive
+pair of real period dates, regresses REALIZED stock returns over that
+period on each stock's real exposure AS OF the period's START (lagged,
+never the period's end), reusing Stage 2's `compute_factor_exposure_table`
+for the lagged exposures and `alpha-validation-toolkit`'s real
+`ols_regression` for the fit.
 
-## Stage 6 -- Portfolio + Risk: NOT STARTED
+A factor with no usable reading for ANY security in a given period
+(e.g. momentum before 12 real months of history exist) is dropped from
+THAT period's joint regression with a warning, rather than letting one
+all-NaN column wipe out every row for every factor via the toolkit's
+own row-wise `dropna`.
+
+**A real, investigated, documented finding (not a bug, not hidden):**
+the synthetic Value factor's (book-to-price) correlation with its own
+planted `value_score` decays and can REVERSE SIGN over a long synthetic
+backtest -- confirmed directly: +0.35 at an early reporting period,
+-0.14 by the final period 36 months later. Root cause: book-to-price's
+denominator (price) is a cumulative product of returns that are
+themselves partly driven by `value_score`, so a persistently
+high-`value_score` security's price compounds upward over time and
+eventually outpaces the direct effect on book value -- mechanically
+shrinking the ratio back down, the same dynamic as a real "value trap"
+re-rating. Momentum does NOT share this issue (it's measured directly
+on price returns, the same quantity driving `realized_return`) and is
+recovered reliably, confirmed stable across every window length tested.
+This is a genuine property of the Stage 1 generator's design, not
+something Stage 5 can or should "fix" without touching Stage 1's
+pinned `realized_return`/price formulas -- documented here and in
+`docs/data_dictionary.md` rather than papered over with a cherry-picked
+test window.
+
+6 new tests (4 unit + 2 integration on the real synthetic dataset; 120
+total, was 114). New CLI: `scripts/compute_factor_returns.py`. Pushed.
+
+## Next up: Stage 6 -- Portfolio + Risk
 
 Factor covariance from Stage 5's return history; portfolio factor
 exposure vector (from Stage 3); risk decomposition (factor vs. specific
