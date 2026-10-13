@@ -67,14 +67,33 @@ expected consequence of standardization being mean-zero across that same
 universe) -- a strong sanity check that Stage 2 -> Stage 3 wiring is
 correct, not just that each stage passes its own isolated tests. Pushed.
 
-## Next up: Stage 4 -- Neutralization
+## Stage 4 -- Neutralization: COMPLETE
 
-Regress a signal's raw scores on a chosen set of factor exposures (reusing
-`alpha-validation-toolkit.ols_regression`) to produce residual scores +
-diagnostics (R², residual exposure check). Must preserve intentional,
-profitable exposures the researcher explicitly chooses not to neutralize.
+Added `neutralization/neutralize.py` (`neutralize_signal`): regresses a
+signal's raw cross-sectional scores on an explicit, researcher-chosen
+subset of factor exposures via `alpha-validation-toolkit`'s real
+`ols_regression`/`OLSResult` (reused, never reimplemented). The residual
+is the neutralized signal. Every factor NOT named is a `preserved_factor`
+-- reported with its own before/after correlation to the signal, never
+regressed out, so a researcher can confirm an intentional, profitable
+exposure genuinely survived neutralization.
 
-## Stage 5 -- Factor Returns: NOT STARTED
+A real bug was caught and fixed: the residual-exposure warning check
+computed a correlation against the residual directly, which is
+numerically unstable when the residual has near-zero variance (e.g. an
+exact, noiseless relationship leaves a residual of pure float noise at
+~1e-16) -- that noise's correlation with anything can spuriously land
+anywhere, including near 1.0, producing a false "still correlated"
+warning on a PERFECT neutralization. Fixed with a variance-floor guard
+(`_safe_corr`) that reports 0.0 rather than an unstable number when
+either series' real standard deviation is below a small floor. Caught
+by a test that constructed exactly that exact/noiseless case, not
+hypothetically.
+
+7 new tests (6 unit + 1 integration on the real synthetic dataset; 114
+total, was 107). New CLI: `scripts/neutralize_signal.py`. Pushed.
+
+## Next up: Stage 5 -- Factor Returns
 
 Cross-sectional regression of realized returns on LAGGED (period-start)
 factor exposures, per period -> a new `FactorReturnRow` time series +

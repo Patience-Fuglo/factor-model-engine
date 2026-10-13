@@ -120,6 +120,20 @@ SIGNAL/PORTFOLIO-level `FactorExposureRow` per factor -- see
 `src/factor_model/exposures/portfolio_exposure.py` for the real
 re-normalization and missing-coverage rules.
 
+## Stage 4 -- Neutralization (`neutralization/neutralize.py`)
+
+`neutralize_signal(signal_scores, factor_exposures, factors_to_neutralize)`
+regresses `signal_scores` on the named factor columns of
+`factor_exposures` via `alpha-validation-toolkit`'s real
+`ols_regression` and returns the residual as the neutralized signal.
+Every other column of `factor_exposures` is a `preserved_factor` --
+reported, with its own correlation to the signal before and after, but
+never regressed out. `NeutralizationResult.warnings` fires when a
+neutralized factor's residual correlation still exceeds a real threshold
+after neutralization (default 0.10) -- guarded against a known numerical
+instability where a near-zero-variance residual's correlation with
+anything is meaningless, not computed naively.
+
 ## Stage 2 factor formulas (`factors/`)
 
 | Factor | Raw formula | Standardization input | Notes |

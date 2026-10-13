@@ -5,17 +5,19 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-**Stages 1–3 of 10 are complete**: the repository's data foundation
+**Stages 1–4 of 10 are complete**: the repository's data foundation
 (schemas, point-in-time semantics, universe construction, cross-sectional
 transforms, a deterministic synthetic dataset with a known ground-truth
 factor structure), a four-factor library (Momentum, Value, Size, Quality)
-that builds the full point-in-time Factor Exposure Table, and an exposure
+that builds the full point-in-time Factor Exposure Table, an exposure
 engine that aggregates stock-level exposures into signal/portfolio/
-benchmark-level exposures. See [`docs/STATUS.md`](docs/STATUS.md) for
-stage-by-stage build status. Stages 4–10 (neutralization, factor-return
-regression, portfolio/risk, attribution, regimes/monitoring, reporting,
-hardening) are intentionally stubbed (`__init__.py` only) and out of scope
-so far.
+benchmark-level exposures, and a neutralization engine that removes a
+chosen subset of factor exposures from a signal via real cross-sectional
+OLS while preserving every other factor's exposure. See
+[`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build status.
+Stages 5–10 (factor-return regression, portfolio/risk, attribution,
+regimes/monitoring, reporting, hardening) are intentionally stubbed
+(`__init__.py` only) and out of scope so far.
 
 ## Data
 
@@ -66,6 +68,7 @@ python scripts/generate_synthetic_dataset.py
 python scripts/run_data_health_report.py --as-of 2020-12-31
 python scripts/build_factor_table.py --as-of 2020-06-30
 python scripts/build_portfolio_exposure.py --as-of 2020-06-30
+python scripts/neutralize_signal.py --as-of 2020-06-30 --signal-csv my_signal.csv --neutralize size
 ```
 
 ## Repository layout
@@ -99,8 +102,11 @@ src/factor_model/
   exposures/
     portfolio_exposure.py    # aggregate_exposure() -- stock exposures ->
                               # signal/portfolio/benchmark exposures
-  neutralization/, regression/, risk/, attribution/,
-  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 4+
+  neutralization/
+    neutralize.py             # neutralize_signal() -- real cross-sectional
+                               # OLS (reuses alpha-validation-toolkit)
+  regression/, risk/, attribution/,
+  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 5+
 
 tests/
   unit/           # schemas, config, synthetic data, point-in-time,
@@ -116,6 +122,7 @@ scripts/
   build_factor_table.py             # writes outputs/factors/factor_table_<as_of>.csv
                                      # + factor_library_report_<as_of>.json
   build_portfolio_exposure.py        # writes outputs/exposures/<portfolio_id>_exposure_<as_of>.json
+  neutralize_signal.py                # writes outputs/neutralization/neutralized_signal_<as_of>.json
 
 docs/
   research_assumptions.md   # every configurable research judgment call
