@@ -180,13 +180,29 @@ out ~0 (consistent with Stage 3's own ~0 exposure finding for the same
 construction) and its effective-n-positions equals its real security
 count, as expected for an equal-weight portfolio. Pushed.
 
-## Next up: Stage 7 -- Attribution
+## Stage 7 -- Attribution: COMPLETE
 
-Populate `FactorAttributionRow` (already schema'd in Stage 1) using
-Stage 2/3 period-start exposures x Stage 5 realized factor returns.
-Separate factor-driven return from security selection/residual.
+Added `attribution/attribution.py` (`compute_attribution`): finally
+populates `FactorAttributionRow`, the schema Stage 1 defined but left
+empty. Combines a subject's real exposure AT PERIOD_START (Stage 2/3)
+with each real factor's realized return OVER THE PERIOD (Stage 5) into
+a per-factor P&L contribution, plus one explicit RESIDUAL row for
+whatever the subject's own real realized return the factors couldn't
+explain.
 
-## Stage 8 -- Regimes + Monitoring: NOT STARTED
+The real reconciliation identity -- `realized_return == sum(
+contribution_to_return for every row, including the residual)` --
+holds EXACTLY, not approximately, by construction, and is verified
+directly: both in isolated unit tests and on 10 real securities from
+the synthetic dataset in the integration test. A factor missing either
+a real exposure or a real factor return for a given subject/period is
+folded into the residual with a warning, never silently treated as a
+zero-exposure (and therefore zero-contribution) factor.
+
+7 new tests (6 unit + 1 integration; 137 total, was 130). New CLI:
+`scripts/attribute_returns.py`. Pushed.
+
+## Next up: Stage 8 -- Regimes + Monitoring
 
 Rolling factor-return stability/correlation regime detection; factor
 drift diagnostics; alerting thresholds, building on Stage 5's history.

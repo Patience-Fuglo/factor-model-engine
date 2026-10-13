@@ -144,6 +144,19 @@ to a real compounding confound (price, the ratio's denominator, is
 itself partly driven by `value_score`) — see `docs/STATUS.md` Stage 5
 for the full investigation. Momentum does not share this issue.
 
+## Stage 7 -- Attribution (`attribution/attribution.py`)
+
+`compute_attribution(exposure_rows, factor_return_rows, realized_return,
+subject_type, subject_id, period_start, period_end)` finally populates
+`FactorAttributionRow` (schema'd in Stage 1, empty until now). A factor
+contributes a real row only when BOTH a real exposure (at
+`period_start`) and a real factor return (for that exact period) exist;
+otherwise it's folded into the one explicit RESIDUAL row
+(`factor_name="residual"`, `is_residual=True`), never silently assumed
+zero. The reconciliation identity `realized_return == sum(
+contribution_to_return)` holds exactly by construction — verified
+directly in tests, not just asserted in a docstring.
+
 ## Stage 6 -- Portfolio + Risk (`risk/`)
 
 `compute_factor_covariance(factor_return_rows, risk_cfg)` -- a real
