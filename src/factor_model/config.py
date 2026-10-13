@@ -130,12 +130,34 @@ class DiagnosticsConfig:
 
 
 @dataclass(frozen=True)
+class RiskConfig:
+    # RESEARCH ASSUMPTION -- below this many real periods, a factor
+    # covariance matrix is flagged unstable, not trusted silently
+    min_periods_for_covariance: int = 24
+    # RESEARCH ASSUMPTION -- any one factor contributing more than this
+    # share of total factor variance is flagged as concentrated
+    max_single_factor_variance_share: float = 0.60
+    # RESEARCH ASSUMPTION -- below this many real effective positions
+    # (1 / sum(weight^2)), a portfolio is flagged as concentrated
+    min_effective_n_positions: float = 5.0
+
+    def __post_init__(self) -> None:
+        if self.min_periods_for_covariance < 2:
+            raise ValueError("min_periods_for_covariance must be >= 2")
+        if not 0 < self.max_single_factor_variance_share <= 1:
+            raise ValueError("max_single_factor_variance_share must be in (0, 1]")
+        if self.min_effective_n_positions <= 0:
+            raise ValueError("min_effective_n_positions must be positive")
+
+
+@dataclass(frozen=True)
 class EngineConfig:
     run: RunConfig = field(default_factory=RunConfig)
     data: DataConfig = field(default_factory=DataConfig)
     universe: UniverseConfig = field(default_factory=UniverseConfig)
     factors: FactorConfig = field(default_factory=FactorConfig)
     diagnostics: DiagnosticsConfig = field(default_factory=DiagnosticsConfig)
+    risk: RiskConfig = field(default_factory=RiskConfig)
 
 
 def load_config(path: str) -> EngineConfig:
@@ -171,5 +193,6 @@ def load_config(path: str) -> EngineConfig:
     )
 
     diagnostics = DiagnosticsConfig(**raw.get("diagnostics", {}))
+    risk = RiskConfig(**raw.get("risk", {}))
 
-    return EngineConfig(run=run, data=data, universe=universe, factors=factors, diagnostics=diagnostics)
+    return EngineConfig(run=run, data=data, universe=universe, factors=factors, diagnostics=diagnostics, risk=risk)

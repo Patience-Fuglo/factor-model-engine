@@ -32,3 +32,8 @@ factors:
 diagnostics:
   max_allowed_missingness_pct: 0.10       # RESEARCH ASSUMPTION
   min_cross_section_size: 20              # RESEARCH ASSUMPTION
+
+risk:
+  min_periods_for_covariance: 24          # RESEARCH ASSUMPTION
+  max_single_factor_variance_share: 0.60  # RESEARCH ASSUMPTION
+  min_effective_n_positions: 5.0          # RESEARCH ASSUMPTION

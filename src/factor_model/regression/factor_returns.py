@@ -15,10 +15,11 @@ reimplemented here.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Sequence
 
 import pandas as pd
-from quant_toolkit.metrics import ols_regression
+from quant_toolkit.metrics import OLSResult, ols_regression
 
 from ..config import EngineConfig
 from ..data.point_in_time import latest_known_market
@@ -45,6 +46,66 @@ def _period_realized_returns(
             continue
         returns[security_id] = obs_curr.price / obs_prev.price - 1.0
     return pd.Series(returns)
+
+
+@dataclass
+class PeriodFit:
+    """One period's real lagged cross-sectional fit -- exposed (not
+    private) so Stage 6's specific-risk computation can reuse the exact
+    same lagged exposures/realized returns/OLS fit that produced each
+    period's factor returns, rather than re-deriving a parallel version
+    of the same real regression and risking the two silently drifting
+    apart.
+    """
+
+    period_start: pd.Timestamp
+    period_end: pd.Timestamp
+    exposure_pivot: pd.DataFrame  # usable (non-all-NaN) columns only
+    realized_returns: pd.Series
+    ols_result: OLSResult | None
+    warning: str | None
+
+
+def _fit_one_period(
+    market_observations: Sequence[MarketObservation],
+    fundamental_observations: Sequence[FundamentalObservation],
+    t_prev: pd.Timestamp,
+    t_curr: pd.Timestamp,
+    engine_cfg: EngineConfig,
+) -> PeriodFit:
+    universe = build_point_in_time_universe(market_observations, t_prev, engine_cfg.universe, engine_cfg.data)
+    exposure_rows, _ = compute_factor_exposure_table(
+        market_observations, fundamental_observations, t_prev, universe, engine_cfg
+    )
+    exposure_pivot = factor_exposure_rows_to_frame(exposure_rows).pivot(
+        index="security_id", columns="factor_name", values="standardized_score"
+    )
+    # a factor with NO real reading for ANY security this period (e.g.
+    # momentum, before 12 real months of history exist yet) can't be
+    # estimated this period at all -- drop it from THIS period's joint
+    # regression rather than letting one all-NaN column wipe out every
+    # row via ols_regression's own dropna, which would silently kill
+    # the whole period's factor-return estimate for every factor, not
+    # just the genuinely unestimable one
+    usable_columns = [c for c in exposure_pivot.columns if exposure_pivot[c].notna().any()]
+    dropped_columns = [c for c in exposure_pivot.columns if c not in usable_columns]
+    exposure_pivot = exposure_pivot[usable_columns]
+    realized_returns = _period_realized_returns(market_observations, universe.included_ids(), t_prev, t_curr)
+
+    warning = None
+    if dropped_columns:
+        warning = (
+            f"{t_prev.date()} -> {t_curr.date()}: no real exposure reading for {dropped_columns} "
+            "this period -- excluded from this period's regression, not estimated"
+        )
+    if exposure_pivot.empty:
+        return PeriodFit(t_prev, t_curr, exposure_pivot, realized_returns, None,
+                          warning or f"{t_prev.date()} -> {t_curr.date()}: skipped -- no real factor had any usable exposure")
+    try:
+        result = ols_regression(realized_returns, exposure_pivot)
+    except ValueError as exc:
+        return PeriodFit(t_prev, t_curr, exposure_pivot, realized_returns, None, f"{t_prev.date()} -> {t_curr.date()}: skipped -- {exc}")
+    return PeriodFit(t_prev, t_curr, exposure_pivot, realized_returns, result, warning)
 
 
 def compute_factor_returns(
@@ -74,49 +135,20 @@ def compute_factor_returns(
     warnings: list[str] = []
 
     for t_prev, t_curr in zip(sorted_dates[:-1], sorted_dates[1:]):
-        universe = build_point_in_time_universe(market_observations, t_prev, engine_cfg.universe, engine_cfg.data)
-        exposure_rows, _ = compute_factor_exposure_table(
-            market_observations, fundamental_observations, t_prev, universe, engine_cfg
-        )
-        exposure_pivot = factor_exposure_rows_to_frame(exposure_rows).pivot(
-            index="security_id", columns="factor_name", values="standardized_score"
-        )
-        # a factor with NO real reading for ANY security this period (e.g.
-        # momentum, before 12 real months of history exist yet) can't be
-        # estimated this period at all -- drop it from THIS period's joint
-        # regression rather than letting one all-NaN column wipe out every
-        # row via ols_regression's own dropna, which would silently kill
-        # the whole period's factor-return estimate for every factor, not
-        # just the genuinely unestimable one
-        usable_columns = [c for c in exposure_pivot.columns if exposure_pivot[c].notna().any()]
-        dropped_columns = [c for c in exposure_pivot.columns if c not in usable_columns]
-        if dropped_columns:
-            warnings.append(
-                f"{t_prev.date()} -> {t_curr.date()}: no real exposure reading for {dropped_columns} "
-                "this period -- excluded from this period's regression, not estimated"
-            )
-        exposure_pivot = exposure_pivot[usable_columns]
-        realized_returns = _period_realized_returns(market_observations, universe.included_ids(), t_prev, t_curr)
-
-        if exposure_pivot.empty:
-            warnings.append(f"{t_prev.date()} -> {t_curr.date()}: skipped -- no real factor had any usable exposure")
+        fit = _fit_one_period(market_observations, fundamental_observations, t_prev, t_curr, engine_cfg)
+        if fit.warning:
+            warnings.append(fit.warning)
+        if fit.ols_result is None:
             continue
-
-        try:
-            result = ols_regression(realized_returns, exposure_pivot)
-        except ValueError as exc:
-            warnings.append(f"{t_prev.date()} -> {t_curr.date()}: skipped -- {exc}")
-            continue
-
-        for factor_name in exposure_pivot.columns:
+        for factor_name in fit.exposure_pivot.columns:
             rows.append(
                 FactorReturnRow(
                     period_start=t_prev,
                     period_end=t_curr,
                     factor_name=factor_name,
-                    factor_return=result.betas[factor_name],
-                    r_squared=result.r_squared,
-                    n_obs=result.n_obs,
+                    factor_return=fit.ols_result.betas[factor_name],
+                    r_squared=fit.ols_result.r_squared,
+                    n_obs=fit.ols_result.n_obs,
                     known_as_of=t_curr,
                 )
             )

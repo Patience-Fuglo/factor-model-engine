@@ -5,7 +5,7 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-**Stages 1–5 of 10 are complete**: the repository's data foundation
+**Stages 1–6 of 10 are complete**: the repository's data foundation
 (schemas, point-in-time semantics, universe construction, cross-sectional
 transforms, a deterministic synthetic dataset with a known ground-truth
 factor structure), a four-factor library (Momentum, Value, Size, Quality)
@@ -13,14 +13,15 @@ that builds the full point-in-time Factor Exposure Table, an exposure
 engine that aggregates stock-level exposures into signal/portfolio/
 benchmark-level exposures, a neutralization engine that removes a chosen
 subset of factor exposures from a signal via real cross-sectional OLS
-while preserving every other factor's exposure, and a factor-return
-engine that estimates a real, lagged factor-return time series via
-cross-sectional regression. See [`docs/STATUS.md`](docs/STATUS.md) for
-stage-by-stage build status, including a documented, investigated
-limitation of the synthetic Value factor over long backtests. Stages
-6–10 (portfolio/risk, attribution, regimes/monitoring, reporting,
-hardening) are intentionally stubbed (`__init__.py` only) and out of
-scope so far.
+while preserving every other factor's exposure, a factor-return engine
+that estimates a real, lagged factor-return time series via
+cross-sectional regression, and a portfolio risk engine that decomposes
+total variance into factor and specific risk with concentration
+checks. See [`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build
+status, including a documented, investigated limitation of the synthetic
+Value factor over long backtests. Stages 7–10 (attribution,
+regimes/monitoring, reporting, hardening) are intentionally stubbed
+(`__init__.py` only) and out of scope so far.
 
 ## Data
 
@@ -73,6 +74,7 @@ python scripts/build_factor_table.py --as-of 2020-06-30
 python scripts/build_portfolio_exposure.py --as-of 2020-06-30
 python scripts/neutralize_signal.py --as-of 2020-06-30 --signal-csv my_signal.csv --neutralize size
 python scripts/compute_factor_returns.py --start 2017-01-31 --end 2020-12-31
+python scripts/compute_portfolio_risk.py --as-of 2020-12-31 --start 2017-01-31 --end 2020-12-31
 ```
 
 ## Repository layout
@@ -113,8 +115,16 @@ src/factor_model/
     factor_returns.py          # compute_factor_returns() -- lagged
                                 # Fama-MacBeth-style cross-sectional
                                 # regression (reuses alpha-validation-toolkit)
-  risk/, attribution/,
-  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 6+
+  risk/
+    factor_covariance.py       # compute_factor_covariance() -- real
+                                # sample covariance over factor returns
+    specific_risk.py             # compute_specific_returns()/
+                                  # compute_specific_variance()
+    portfolio_risk.py              # compute_portfolio_risk() -- factor
+                                    # vs. specific variance decomposition
+                                    # + concentration/risk-limit checks
+  attribution/,
+  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 7+
 
 tests/
   unit/           # schemas, config, synthetic data, point-in-time,
@@ -132,6 +142,7 @@ scripts/
   build_portfolio_exposure.py        # writes outputs/exposures/<portfolio_id>_exposure_<as_of>.json
   neutralize_signal.py                # writes outputs/neutralization/neutralized_signal_<as_of>.json
   compute_factor_returns.py            # writes outputs/factor_returns/factor_returns_<start>_<end>.csv
+  compute_portfolio_risk.py             # writes outputs/risk/portfolio_risk_<portfolio_id>_<as_of>.json
 
 docs/
   research_assumptions.md   # every configurable research judgment call

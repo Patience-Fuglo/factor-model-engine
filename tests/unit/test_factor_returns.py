@@ -89,6 +89,8 @@ def test_compute_factor_returns_warns_rather_than_crashes_on_a_too_small_period(
     )
     assert rows == []
     # one real security alone can't support standardization (needs >= 2)
-    # for ANY factor, so every factor is dropped, then the period itself
-    # is skipped -- both warned about, never silently swallowed
-    assert len(warnings) == 2
+    # for ANY factor, so every factor is dropped and the period is
+    # skipped -- one comprehensive warning naming every dropped factor,
+    # never silently swallowed
+    assert len(warnings) == 1
+    assert "momentum" in warnings[0] and "size" in warnings[0]

@@ -144,6 +144,27 @@ to a real compounding confound (price, the ratio's denominator, is
 itself partly driven by `value_score`) — see `docs/STATUS.md` Stage 5
 for the full investigation. Momentum does not share this issue.
 
+## Stage 6 -- Portfolio + Risk (`risk/`)
+
+`compute_factor_covariance(factor_return_rows, risk_cfg)` -- a real
+sample covariance matrix over Stage 5's factor-return panel; warns
+below `risk_cfg.min_periods_for_covariance` real periods.
+
+`compute_specific_returns`/`compute_specific_variance` -- each
+security's real residual-return variance across time, reusing Stage
+5's exact per-period regression fit (never a separately-derived
+parallel computation).
+
+`compute_portfolio_risk(portfolio_exposure_rows, factor_covariance,
+holdings, specific_variance_by_security, portfolio_id, risk_cfg)` --
+`PortfolioRiskResult`: `factor_variance` (`w^T Sigma w`),
+`specific_variance` (`sum(weight_i^2 * specific_variance_i)`,
+uncorrelated-idiosyncratic-returns approximation), `total_variance`,
+`factor_risk_contribution` (per factor, sums to `factor_variance`),
+`effective_n_positions` (Herfindahl-based concentration), `warnings`
+(single-factor concentration and minimum-effective-positions limits
+from `RiskConfig`, plus missing specific-variance holdings).
+
 ## Stage 4 -- Neutralization (`neutralization/neutralize.py`)
 
 `neutralize_signal(signal_scores, factor_exposures, factors_to_neutralize)`

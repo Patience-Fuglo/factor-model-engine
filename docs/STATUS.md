@@ -133,13 +133,54 @@ test window.
 6 new tests (4 unit + 2 integration on the real synthetic dataset; 120
 total, was 114). New CLI: `scripts/compute_factor_returns.py`. Pushed.
 
-## Next up: Stage 6 -- Portfolio + Risk
+## Stage 6 -- Portfolio + Risk: COMPLETE
 
-Factor covariance from Stage 5's return history; portfolio factor
-exposure vector (from Stage 3); risk decomposition (factor vs. specific
-risk); concentration/risk-limit checks.
+Added `RiskConfig` (min_periods_for_covariance, max_single_factor_variance_share,
+min_effective_n_positions -- all RESEARCH ASSUMPTION) and three new
+`risk/` modules:
 
-## Stage 7 -- Attribution: NOT STARTED
+- `factor_covariance.py` (`compute_factor_covariance`): a real sample
+  covariance matrix (`pandas.cov`) over Stage 5's factor-return panel.
+  No shrinkage/regularization yet (a later-stage refinement); warns,
+  rather than silently proceeding, when too few real periods are
+  available relative to the number of factors (a well-known small-
+  sample covariance instability).
+- `specific_risk.py` (`compute_specific_returns`/`compute_specific_variance`):
+  reuses Stage 5's exact per-period fit (refactored `regression._fit_one_period`,
+  exposed rather than duplicated) to recover each period's real
+  cross-sectional residual, then each security's own specific-return
+  variance across time -- the standard textbook specific-risk input.
+- `portfolio_risk.py` (`compute_portfolio_risk`): real factor variance
+  as the quadratic form `w^T Sigma w` (the portfolio's own Stage 3
+  exposure vector against the real factor covariance), decomposed into
+  each factor's real marginal variance contribution (sums exactly to
+  the total); specific variance as `sum(weight_i^2 * specific_variance_i)`,
+  assuming uncorrelated idiosyncratic returns (the standard
+  approximation); a real Herfindahl-based effective-n-positions
+  concentration measure; and risk-limit warnings (single-factor
+  variance share, minimum effective positions) against `RiskConfig`.
+  Missing specific-variance data for a holding is excluded, not
+  zero-filled, with a warning.
+
+Refactored (not just extended) `regression/factor_returns.py`:
+extracted the existing per-period lagged-regression logic into an
+exposed `PeriodFit`/`_fit_one_period`, so Stage 6's specific-return
+computation reuses the EXACT same regression Stage 5's factor returns
+come from, rather than risking the two silently drifting into two
+different real regressions over time. `compute_factor_returns`'s own
+behavior is unchanged (re-verified: all Stage 5 tests still pass,
+with one test updated for an improved, now-single comprehensive
+warning instead of two redundant ones -- confirmed as an improvement,
+not a regression).
+
+11 new tests (9 unit + 1 integration on the real synthetic dataset;
+130 total, was 120). New CLI: `scripts/compute_portfolio_risk.py`.
+Verified end-to-end: an equal-weight benchmark's factor variance comes
+out ~0 (consistent with Stage 3's own ~0 exposure finding for the same
+construction) and its effective-n-positions equals its real security
+count, as expected for an equal-weight portfolio. Pushed.
+
+## Next up: Stage 7 -- Attribution
 
 Populate `FactorAttributionRow` (already schema'd in Stage 1) using
 Stage 2/3 period-start exposures x Stage 5 realized factor returns.
