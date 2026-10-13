@@ -181,6 +181,35 @@ class UniversePITSnapshot:
 
 
 @dataclass(frozen=True)
+class PortfolioHolding:
+    """One real security's weight in one portfolio (or signal, or
+    benchmark -- all three are just different weight schemes over the
+    same real universe) as of one date. A benchmark is represented as an
+    ordinary ``PortfolioHolding`` set with its own ``portfolio_id`` --
+    no separate schema, since it's the same real concept (a point-in-time
+    weight scheme), not a different one.
+
+    ``known_as_of`` is when THIS holdings snapshot became knowable -- for
+    a real portfolio this is almost always same-day (``== as_of``), kept
+    explicit anyway rather than assumed, matching ``MarketObservation``'s
+    own convention.
+    """
+
+    portfolio_id: str
+    security_id: str
+    as_of: pd.Timestamp
+    weight: float
+    known_as_of: pd.Timestamp
+
+    def __post_init__(self) -> None:
+        if self.known_as_of < self.as_of:
+            raise ValueError(
+                f"{self.portfolio_id}/{self.security_id}: known_as_of ({self.known_as_of}) cannot "
+                f"precede as_of ({self.as_of}) -- look-ahead"
+            )
+
+
+@dataclass(frozen=True)
 class FactorExposureRow:
     """A point-in-time characteristic: how much of ``factor_name`` does
     ``subject_id`` (a stock, signal, or portfolio, per ``subject_type``)

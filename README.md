@@ -5,13 +5,14 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-**Stages 1–2 of 10 are complete**: the repository's data foundation
+**Stages 1–3 of 10 are complete**: the repository's data foundation
 (schemas, point-in-time semantics, universe construction, cross-sectional
 transforms, a deterministic synthetic dataset with a known ground-truth
-factor structure) and a four-factor library (Momentum, Value, Size,
-Quality) that builds the full point-in-time Factor Exposure Table. See
-[`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build status.
-Stages 3–10 (exposure aggregation, neutralization, factor-return
+factor structure), a four-factor library (Momentum, Value, Size, Quality)
+that builds the full point-in-time Factor Exposure Table, and an exposure
+engine that aggregates stock-level exposures into signal/portfolio/
+benchmark-level exposures. See [`docs/STATUS.md`](docs/STATUS.md) for
+stage-by-stage build status. Stages 4–10 (neutralization, factor-return
 regression, portfolio/risk, attribution, regimes/monitoring, reporting,
 hardening) are intentionally stubbed (`__init__.py` only) and out of scope
 so far.
@@ -64,6 +65,7 @@ python -m pytest tests/ -v
 python scripts/generate_synthetic_dataset.py
 python scripts/run_data_health_report.py --as-of 2020-12-31
 python scripts/build_factor_table.py --as-of 2020-06-30
+python scripts/build_portfolio_exposure.py --as-of 2020-06-30
 ```
 
 ## Repository layout
@@ -94,8 +96,11 @@ src/factor_model/
   diagnostics/
     data_health.py           # coverage/missingness/staleness/duplicate/
                               # outlier checks -- warns, never silently fixes
-  exposures/, neutralization/, regression/, risk/, attribution/,
-  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 3+
+  exposures/
+    portfolio_exposure.py    # aggregate_exposure() -- stock exposures ->
+                              # signal/portfolio/benchmark exposures
+  neutralization/, regression/, risk/, attribution/,
+  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 4+
 
 tests/
   unit/           # schemas, config, synthetic data, point-in-time,
@@ -110,6 +115,7 @@ scripts/
   run_data_health_report.py        # writes outputs/reports/data_health_<as_of>.json
   build_factor_table.py             # writes outputs/factors/factor_table_<as_of>.csv
                                      # + factor_library_report_<as_of>.json
+  build_portfolio_exposure.py        # writes outputs/exposures/<portfolio_id>_exposure_<as_of>.json
 
 docs/
   research_assumptions.md   # every configurable research judgment call

@@ -99,6 +99,27 @@ now"; attribution is "how much did that tilt earn over this period."
 | `contribution_to_return` | `float` | `exposure_at_period_start * factor_return_over_period` — a **linear approximation**, documented explicitly as such, not an exact P&L decomposition. Later stages may refine this. |
 | `is_residual` | `bool` | `True` for the stock-specific/unexplained row, when included. |
 
+## `PortfolioHolding` (Stage 3)
+
+A real security's weight in one portfolio, signal, or benchmark weight
+scheme, as of one date. A benchmark is represented as an ordinary
+`PortfolioHolding` set under its own `portfolio_id` -- not a separate
+schema.
+
+| Field | Type | Notes |
+|---|---|---|
+| `portfolio_id` | `str` | Identifies the weight scheme (a real portfolio, a signal's own weights, or a benchmark). |
+| `security_id` | `str` | |
+| `as_of` | `Timestamp` | |
+| `weight` | `float` | No sign restriction -- a negative weight is a real short position. |
+| `known_as_of` | `Timestamp` | When this holdings snapshot became knowable; almost always `== as_of` for a real portfolio. |
+
+`exposures/portfolio_exposure.aggregate_exposure` combines `PortfolioHolding`
+weights with Stage 2's stock-level `FactorExposureRow`s into one
+SIGNAL/PORTFOLIO-level `FactorExposureRow` per factor -- see
+`src/factor_model/exposures/portfolio_exposure.py` for the real
+re-normalization and missing-coverage rules.
+
 ## Stage 2 factor formulas (`factors/`)
 
 | Factor | Raw formula | Standardization input | Notes |

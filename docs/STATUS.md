@@ -44,15 +44,30 @@ relationship at |corr| > 0.4, and the full composite at > 0.3 (diluted,
 as expected, by the independent profitability pillar -- documented, not
 hidden, in the test itself). Pushed.
 
-## Stage 3 -- Exposure Engine: NOT STARTED
+## Stage 3 -- Exposure Engine: COMPLETE
 
-Aggregate Stage 2 stock-level exposures into SIGNAL- and PORTFOLIO-level
-exposures. Needs a new `PortfolioHolding` schema (security_id, as_of,
-weight, source_known_as_of). Reuses `FactorExposureRow` with
-`subject_type=SIGNAL`/`PORTFOLIO` (already supported by the Stage 1
-schema -- no change needed there).
+Added `PortfolioHolding` schema (portfolio_id, security_id, as_of,
+weight, known_as_of) and `exposures/portfolio_exposure.py`
+(`aggregate_exposure`): a real weighted-average aggregation of Stage 2
+stock-level exposures into one SIGNAL- or PORTFOLIO-level
+`FactorExposureRow` per factor. Re-normalizes over only the real
+available constituent exposures when some are missing (never zero-fills
+a missing stock exposure); flags `"insufficient_coverage"` when nothing
+real is available; propagates `source_known_as_of` as the LATEST real
+input among every contributing constituent. A benchmark is just another
+`PortfolioHolding` weight scheme aggregated through the exact same
+function (`equal_weight_benchmark_holdings` provided as a convenience) --
+no separate code path.
 
-## Stage 4 -- Neutralization: NOT STARTED
+11 new tests (10 unit + 1 integration using the real synthetic dataset;
+107 total, was 96). New CLI: `scripts/build_portfolio_exposure.py`.
+Verified end-to-end: an equal-weight benchmark over the FULL eligible
+universe correctly averages to ~0.0 for every z-scored factor (the real,
+expected consequence of standardization being mean-zero across that same
+universe) -- a strong sanity check that Stage 2 -> Stage 3 wiring is
+correct, not just that each stage passes its own isolated tests. Pushed.
+
+## Next up: Stage 4 -- Neutralization
 
 Regress a signal's raw scores on a chosen set of factor exposures (reusing
 `alpha-validation-toolkit.ols_regression`) to produce residual scores +
