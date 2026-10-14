@@ -240,12 +240,34 @@ monitoring correctly flagged exactly the limitation Stage 5 already
 investigated and documented, rather than a different, unrelated one.
 Pushed.
 
-## Next up: Stage 9 -- Reporting
+## Stage 9 -- Reporting: COMPLETE
 
-Reproducible report (markdown/JSON) bundling factor tables, risk summary,
-attribution, and regime diagnostics from all prior stages.
+Added `pipeline/pipeline.py` (`run_full_pipeline`) -- the end-to-end
+orchestration this repo's own layout reserved from Stage 1: runs
+Stages 2-8 once, in dependency order, for one real `as_of`/portfolio
+(universe -> factor library -> portfolio exposure -> factor returns ->
+covariance -> specific risk -> portfolio risk -> attribution ->
+regimes/stability), reusing each stage's own tested function --
+nothing in it re-derives a computation another stage already owns.
 
-## Stage 10 -- Hardening: NOT STARTED
+Added `reporting/report.py` (`report_to_dict`/`render_markdown_report`):
+both derived from the SAME `PipelineResult`, so the JSON and Markdown
+outputs can never silently disagree with each other. The Markdown
+report states plainly that its data is synthetic/non-proprietary (same
+convention as the README), and surfaces every real warning collected
+across the whole pipeline, not just a per-stage subset.
+
+8 new tests (3 pipeline + 5 reporting, all exercising the real
+synthetic dataset end to end; 154 total, was 146). New CLI:
+`scripts/generate_report.py`. Verified: the full JSON + Markdown report
+is byte-identical across two independent runs on the same synthetic
+data, and correctly surfaces the SAME two real findings Stage 5
+(Value's long-horizon sign reversal) and Stage 8 (Value's IC decay)
+already investigated and documented -- the orchestration layer
+reproduces, rather than contradicts, what each stage already found
+independently.
+
+## Next up: Stage 10 -- Hardening
 
 Full cross-stage integration/leak/reproducibility sweep, consolidated
 documentation and CLI workflows, final end-to-end demonstration.

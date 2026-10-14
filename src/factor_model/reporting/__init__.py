@@ -1,3 +1,3 @@
-"""reporting -- implemented in a later stage. Stage 1 only establishes the
-repository structure and the schemas/conventions this module will
-build on (see src/factor_model/data/schemas.py)."""
+from .report import render_markdown_report, report_to_dict
+
+__all__ = ["report_to_dict", "render_markdown_report"]

@@ -144,6 +144,20 @@ to a real compounding confound (price, the ratio's denominator, is
 itself partly driven by `value_score`) — see `docs/STATUS.md` Stage 5
 for the full investigation. Momentum does not share this issue.
 
+## Stage 9 -- Pipeline + Reporting (`pipeline/pipeline.py`, `reporting/report.py`)
+
+`run_full_pipeline(market_observations, fundamental_observations, as_of,
+period_dates, engine_cfg, portfolio_id, holdings)` -- orchestrates
+Stages 2-8 for one real `as_of`/portfolio and returns a `PipelineResult`
+bundling the universe, stock/portfolio exposures, factor-library
+report, factor covariance, portfolio risk, attribution, and per-factor
+regimes/stability. `as_of` must equal `period_dates`'s last (sorted)
+element.
+
+`report_to_dict(result)`/`render_markdown_report(result)` -- both
+derived from the same `PipelineResult`, so the JSON and Markdown
+outputs can never silently disagree.
+
 ## Stage 8 -- Regimes + Monitoring (`regimes/`, `monitoring/`)
 
 `classify_volatility_regime(factor_return_rows, factor_name, regime_cfg)`

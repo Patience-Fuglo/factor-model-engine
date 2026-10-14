@@ -1,3 +1,3 @@
-"""pipeline -- implemented in a later stage. Stage 1 only establishes the
-repository structure and the schemas/conventions this module will
-build on (see src/factor_model/data/schemas.py)."""
+from .pipeline import PipelineResult, run_full_pipeline
+
+__all__ = ["PipelineResult", "run_full_pipeline"]
