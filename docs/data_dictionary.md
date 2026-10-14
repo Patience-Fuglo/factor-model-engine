@@ -144,6 +144,21 @@ to a real compounding confound (price, the ratio's denominator, is
 itself partly driven by `value_score`) — see `docs/STATUS.md` Stage 5
 for the full investigation. Momentum does not share this issue.
 
+## Stage 8 -- Regimes + Monitoring (`regimes/`, `monitoring/`)
+
+`classify_volatility_regime(factor_return_rows, factor_name, regime_cfg)`
+-- a real trailing rolling volatility for one factor, classified
+low/normal/high via an EXPANDING percentile rank (never full-sample --
+a regime label only reflects what was knowable by that period).
+
+`compute_factor_stability(market_observations, fundamental_observations,
+period_dates, engine_cfg)` -- per real factor, a period-by-period
+cross-sectional IC (lagged exposure vs. realized return), reusing
+`alpha-validation-toolkit`'s real `information_coefficient`/`icir`.
+`FactorStabilityResult.warnings` fires on a real sign flip or sharp
+decay in the factor's RECENT IC mean vs. its full history
+(`MonitoringConfig.drift_recent_window`/`drift_decay_threshold`).
+
 ## Stage 7 -- Attribution (`attribution/attribution.py`)
 
 `compute_attribution(exposure_rows, factor_return_rows, realized_return,

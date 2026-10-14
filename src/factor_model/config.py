@@ -151,6 +151,35 @@ class RiskConfig:
 
 
 @dataclass(frozen=True)
+class RegimeConfig:
+    # RESEARCH ASSUMPTION -- trailing window for rolling factor-return volatility
+    volatility_window: int = 12
+    # RESEARCH ASSUMPTION -- expanding-window percentile cutoffs for low/high vol regimes
+    low_volatility_percentile: float = 0.33
+    high_volatility_percentile: float = 0.67
+
+    def __post_init__(self) -> None:
+        if self.volatility_window < 2:
+            raise ValueError("volatility_window must be >= 2")
+        if not 0 < self.low_volatility_percentile < self.high_volatility_percentile < 1:
+            raise ValueError("require 0 < low_volatility_percentile < high_volatility_percentile < 1")
+
+
+@dataclass(frozen=True)
+class MonitoringConfig:
+    # RESEARCH ASSUMPTION -- how many of the most recent real periods count as "recent" for drift detection
+    drift_recent_window: int = 6
+    # RESEARCH ASSUMPTION -- flag drift if |recent IC mean| falls below this fraction of |historical IC mean|
+    drift_decay_threshold: float = 0.5
+
+    def __post_init__(self) -> None:
+        if self.drift_recent_window < 2:
+            raise ValueError("drift_recent_window must be >= 2")
+        if not 0 < self.drift_decay_threshold <= 1:
+            raise ValueError("drift_decay_threshold must be in (0, 1]")
+
+
+@dataclass(frozen=True)
 class EngineConfig:
     run: RunConfig = field(default_factory=RunConfig)
     data: DataConfig = field(default_factory=DataConfig)
@@ -158,6 +187,8 @@ class EngineConfig:
     factors: FactorConfig = field(default_factory=FactorConfig)
     diagnostics: DiagnosticsConfig = field(default_factory=DiagnosticsConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
+    regimes: RegimeConfig = field(default_factory=RegimeConfig)
+    monitoring: MonitoringConfig = field(default_factory=MonitoringConfig)
 
 
 def load_config(path: str) -> EngineConfig:
@@ -194,5 +225,10 @@ def load_config(path: str) -> EngineConfig:
 
     diagnostics = DiagnosticsConfig(**raw.get("diagnostics", {}))
     risk = RiskConfig(**raw.get("risk", {}))
+    regimes = RegimeConfig(**raw.get("regimes", {}))
+    monitoring = MonitoringConfig(**raw.get("monitoring", {}))
 
-    return EngineConfig(run=run, data=data, universe=universe, factors=factors, diagnostics=diagnostics, risk=risk)
+    return EngineConfig(
+        run=run, data=data, universe=universe, factors=factors, diagnostics=diagnostics,
+        risk=risk, regimes=regimes, monitoring=monitoring,
+    )

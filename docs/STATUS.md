@@ -202,12 +202,45 @@ zero-exposure (and therefore zero-contribution) factor.
 7 new tests (6 unit + 1 integration; 137 total, was 130). New CLI:
 `scripts/attribute_returns.py`. Pushed.
 
-## Next up: Stage 8 -- Regimes + Monitoring
+## Stage 8 -- Regimes + Monitoring: COMPLETE
 
-Rolling factor-return stability/correlation regime detection; factor
-drift diagnostics; alerting thresholds, building on Stage 5's history.
+Added `RegimeConfig` (volatility_window, low/high_volatility_percentile)
+and `MonitoringConfig` (drift_recent_window, drift_decay_threshold --
+all RESEARCH ASSUMPTION), and two new modules:
 
-## Stage 9 -- Reporting: NOT STARTED
+- `regimes/regime_detection.py` (`classify_volatility_regime`): a real
+  trailing rolling volatility of one factor's return series, classified
+  into low/normal/high via an EXPANDING (never full-sample) percentile
+  rank -- a regime label for period t must only reflect what was
+  knowable up to and including t, the same point-in-time discipline
+  this repo applies everywhere else. A real, caught pandas-semantics
+  pitfall: `Expanding.rank()`'s own `min_periods` counts non-null
+  observations, not raw rows -- reusing the same strict threshold as
+  the rolling std's own `min_periods` meant no regime label could ever
+  appear within a modest test history; fixed by using a much smaller,
+  separate `min_periods=2` for the rank step itself (a percentile among
+  2+ real readings is already meaningful, just coarse -- it gets more
+  reliable with more history, which is expected, not a defect).
+- `monitoring/monitoring.py` (`compute_factor_stability`): a real
+  period-by-period cross-sectional Information Coefficient between each
+  factor's LAGGED exposure and its realized return, reusing Stage 5/6's
+  exact per-period fit (`_fit_one_period`, now a third consumer) and
+  `alpha-validation-toolkit`'s real `information_coefficient`/`icir` --
+  never reimplemented. Flags a real drift signal when a factor's RECENT
+  IC mean has flipped sign or decayed sharply vs. its own full history.
+
+9 new tests (8 unit + 1 integration on the real synthetic dataset; 146
+total, was 137). New CLI: `scripts/monitor_factors.py`. Verified
+end-to-end on the real synthetic dataset: Momentum (the one factor
+Stage 5 already confirmed recovers reliably) shows a consistently
+positive IC (ICIR > 2 in one real run) with no drift warning; Value
+(the one factor Stage 5 already documented as unreliable over long
+horizons) showed a real decay warning in the same run -- the Stage 8
+monitoring correctly flagged exactly the limitation Stage 5 already
+investigated and documented, rather than a different, unrelated one.
+Pushed.
+
+## Next up: Stage 9 -- Reporting
 
 Reproducible report (markdown/JSON) bundling factor tables, risk summary,
 attribution, and regime diagnostics from all prior stages.

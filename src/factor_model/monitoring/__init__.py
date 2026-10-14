@@ -1,3 +1,3 @@
-"""monitoring -- implemented in a later stage. Stage 1 only establishes the
-repository structure and the schemas/conventions this module will
-build on (see src/factor_model/data/schemas.py)."""
+from .monitoring import FactorStabilityResult, compute_factor_stability
+
+__all__ = ["FactorStabilityResult", "compute_factor_stability"]

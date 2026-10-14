@@ -5,7 +5,7 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-**Stages 1–7 of 10 are complete**: the repository's data foundation
+**Stages 1–8 of 10 are complete**: the repository's data foundation
 (schemas, point-in-time semantics, universe construction, cross-sectional
 transforms, a deterministic synthetic dataset with a known ground-truth
 factor structure), a four-factor library (Momentum, Value, Size, Quality)
@@ -17,13 +17,15 @@ while preserving every other factor's exposure, a factor-return engine
 that estimates a real, lagged factor-return time series via
 cross-sectional regression, a portfolio risk engine that decomposes
 total variance into factor and specific risk with concentration checks,
-and an attribution engine that reconciles each subject's realized return
-exactly into factor contributions plus a residual. See
-[`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build status,
-including a documented, investigated limitation of the synthetic Value
-factor over long backtests. Stages 8–10 (regimes/monitoring, reporting,
-hardening) are intentionally stubbed (`__init__.py` only) and out of
-scope so far.
+an attribution engine that reconciles each subject's realized return
+exactly into factor contributions plus a residual, and a regime/
+monitoring engine that classifies volatility regimes and flags real
+factor-stability drift. See [`docs/STATUS.md`](docs/STATUS.md) for
+stage-by-stage build status, including a documented, investigated
+limitation of the synthetic Value factor over long backtests (which
+Stage 8's own monitoring independently flags, consistent with Stage 5's
+finding). Stages 9–10 (reporting, hardening) are intentionally stubbed
+(`__init__.py` only) and out of scope so far.
 
 ## Data
 
@@ -78,6 +80,7 @@ python scripts/neutralize_signal.py --as-of 2020-06-30 --signal-csv my_signal.cs
 python scripts/compute_factor_returns.py --start 2017-01-31 --end 2020-12-31
 python scripts/compute_portfolio_risk.py --as-of 2020-12-31 --start 2017-01-31 --end 2020-12-31
 python scripts/attribute_returns.py --period-start 2020-05-31 --period-end 2020-06-30
+python scripts/monitor_factors.py --start 2017-01-31 --end 2020-12-31
 ```
 
 ## Repository layout
@@ -130,7 +133,14 @@ src/factor_model/
     attribution.py              # compute_attribution() -- populates
                                  # FactorAttributionRow; exact
                                  # reconciliation to realized return
-  regimes/, monitoring/, reporting/, pipeline/   # stubs -- Stage 8+
+  regimes/
+    regime_detection.py          # classify_volatility_regime() --
+                                  # expanding-percentile vol regime
+  monitoring/
+    monitoring.py                  # compute_factor_stability() -- real
+                                    # IC/ICIR drift detection (reuses
+                                    # alpha-validation-toolkit)
+  reporting/, pipeline/   # stubs -- Stage 9+
 
 tests/
   unit/           # schemas, config, synthetic data, point-in-time,
@@ -150,6 +160,7 @@ scripts/
   compute_factor_returns.py            # writes outputs/factor_returns/factor_returns_<start>_<end>.csv
   compute_portfolio_risk.py             # writes outputs/risk/portfolio_risk_<portfolio_id>_<as_of>.json
   attribute_returns.py                   # writes outputs/attribution/attribution_<start>_<end>.csv
+  monitor_factors.py                      # writes outputs/monitoring/monitoring_report_<start>_<end>.json
 
 docs/
   research_assumptions.md   # every configurable research judgment call

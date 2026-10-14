@@ -37,3 +37,12 @@ risk:
   min_periods_for_covariance: 24          # RESEARCH ASSUMPTION
   max_single_factor_variance_share: 0.60  # RESEARCH ASSUMPTION
   min_effective_n_positions: 5.0          # RESEARCH ASSUMPTION
+
+regimes:
+  volatility_window: 12                   # RESEARCH ASSUMPTION
+  low_volatility_percentile: 0.33         # RESEARCH ASSUMPTION
+  high_volatility_percentile: 0.67        # RESEARCH ASSUMPTION
+
+monitoring:
+  drift_recent_window: 6                  # RESEARCH ASSUMPTION
+  drift_decay_threshold: 0.5              # RESEARCH ASSUMPTION
