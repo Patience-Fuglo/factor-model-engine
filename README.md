@@ -5,28 +5,29 @@ construction, a factor library, exposure measurement, neutralization,
 factor returns, portfolio risk decomposition, return attribution, regime
 analysis, monitoring, and reporting.
 
-**Stages 1–9 of 10 are complete**: the repository's data foundation
+**All 10 stages are complete.** The repository's data foundation
 (schemas, point-in-time semantics, universe construction, cross-sectional
 transforms, a deterministic synthetic dataset with a known ground-truth
-factor structure), a four-factor library (Momentum, Value, Size, Quality)
-that builds the full point-in-time Factor Exposure Table, an exposure
+factor structure); a four-factor library (Momentum, Value, Size, Quality)
+that builds the full point-in-time Factor Exposure Table; an exposure
 engine that aggregates stock-level exposures into signal/portfolio/
-benchmark-level exposures, a neutralization engine that removes a chosen
+benchmark-level exposures; a neutralization engine that removes a chosen
 subset of factor exposures from a signal via real cross-sectional OLS
-while preserving every other factor's exposure, a factor-return engine
+while preserving every other factor's exposure; a factor-return engine
 that estimates a real, lagged factor-return time series via
-cross-sectional regression, a portfolio risk engine that decomposes
-total variance into factor and specific risk with concentration checks,
+cross-sectional regression; a portfolio risk engine that decomposes
+total variance into factor and specific risk with concentration checks;
 an attribution engine that reconciles each subject's realized return
-exactly into factor contributions plus a residual, a regime/monitoring
+exactly into factor contributions plus a residual; a regime/monitoring
 engine that classifies volatility regimes and flags real factor-stability
-drift, and an end-to-end pipeline + reporting layer that ties every
-stage together into one reproducible JSON/Markdown research report. See
-[`docs/STATUS.md`](docs/STATUS.md) for stage-by-stage build status,
-including a documented, investigated limitation of the synthetic Value
-factor over long backtests (independently confirmed by Stages 5, 8, and
-9). Stage 10 (hardening) is intentionally stubbed (`__init__.py` only)
-and out of scope so far.
+drift; and an end-to-end pipeline + reporting layer that ties every
+stage together into one reproducible JSON/Markdown research report,
+hardened by a system-wide point-in-time check and a full real CLI-chain
+subprocess test. See [`docs/STATUS.md`](docs/STATUS.md) for the full
+stage-by-stage build history, the final architecture/formula summary,
+test evidence, and an honest list of limitations -- including a
+documented, investigated limitation of the synthetic Value factor over
+long backtests (independently confirmed by three separate stages).
 
 ## Data
 

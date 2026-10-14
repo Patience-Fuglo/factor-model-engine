@@ -4,6 +4,87 @@ Tracks stage-by-stage completion for the coordinated Stages 2-10 build, so
 work is resumable across sessions without repeating anything already
 verified. Updated at each stage's real completion, not before.
 
+## Final summary (all 10 stages complete)
+
+**Architecture.** Ten stages, each reusing (never duplicating) the
+previous: `data/` (schemas, point-in-time helpers, universe, synthetic
+generator) -> `factors/` (Momentum/Value/Size/Quality -> the Factor
+Exposure Table) -> `exposures/` (stock -> signal/portfolio/benchmark
+aggregation) -> `neutralization/` (real cross-sectional OLS, via
+`alpha-validation-toolkit`) -> `regression/` (lagged Fama-MacBeth factor
+returns) -> `risk/` (factor covariance, specific risk, portfolio
+decomposition) -> `attribution/` (exact P&L reconciliation) ->
+`regimes/` + `monitoring/` (volatility regimes, IC-based drift
+detection, reusing the toolkit's `information_coefficient`/`icir`) ->
+`pipeline/` + `reporting/` (one orchestration function, one JSON/
+Markdown report derived from it). `alpha-validation-toolkit` is reused
+for all real statistical machinery (OLS, IC, ICIR) across Stages 4, 5,
+6, and 8 -- never reimplemented.
+
+**Important formulas** (full detail in `docs/data_dictionary.md`):
+Momentum = trailing return, 12-1 default, configurable. Value =
+book-to-price (latest point-in-time fundamental vintage / latest
+price). Size = log(market cap). Quality = weighted average of
+standardized profitability (EPS/BVPS) and standardized safety
+(-total_debt/total_assets). Factor return = cross-sectional OLS beta of
+realized returns on LAGGED (period-start) exposures. Portfolio factor
+variance = `w^T Sigma w`. Attribution reconciles exactly:
+`realized_return == sum(contribution_to_return)` including the
+residual.
+
+**Test counts.** 157 tests passing: unit tests per module, integration
+tests on the real synthetic dataset for every stage transition, the
+original Stage 1 golden regression suite (still pinned, byte-identical
+through every later stage's changes), and two Stage 10 hardening
+tests -- a full real CLI-chain subprocess run, and the single most
+comprehensive point-in-time check in the repo (below).
+
+**Point-in-time integrity, the decisive evidence.** Stage 10 added
+`test_extending_the_dataset_into_the_future_never_changes_an_earlier_full_pipeline_run`:
+runs the ENTIRE pipeline (universe through the final report) on a
+36-period dataset, then again on a 48-period dataset generated from
+the same seed (12 REAL extra future months added), both queried at the
+SAME `as_of`. The two full reports come back byte-for-byte identical.
+This is the system-wide version of what every earlier stage already
+verified locally (as_of_view, latest_known_fundamental, universe
+construction, lagged factor returns, regime classification) -- proven
+once, holistically, rather than only piece by piece.
+
+**Reproducibility.** Every stage's CLI output and every `PipelineResult`
+/report is verified byte-identical across two independent runs on the
+same input, including the full end-to-end `generate_report.py` output
+(`test_full_pipeline_reconciles_and_reproduces_on_the_default_scale_dataset`).
+
+**End-to-end demonstration.** `scripts/generate_report.py` runs the
+complete Stages 2-9 pipeline and writes one real JSON + Markdown
+research report; `tests/integration/test_cli_workflow.py` runs every
+CLI script in this repo in sequence, as real subprocesses, exactly as a
+researcher would from the command line (see README "Run").
+
+**Limitations, identified rather than hidden:**
+- The synthetic Value factor's correlation with its planted
+  `value_score` reverses sign over a long backtest (a real compounding
+  confound in the Stage 1 generator's price-path construction, not a
+  bug) -- documented in Stages 5, 8, and reproduced again in Stage 9's
+  report. A researcher using this repo on real data should not expect
+  this specific artifact, but should expect the engine to surface a
+  real decay/drift finding like it when one is genuinely present.
+- Factor covariance (Stage 6) is a plain sample covariance, no
+  shrinkage/regularization -- flagged as unstable below a configured
+  minimum period count, never silently trusted, but not yet corrected.
+- Specific risk assumes idiosyncratic returns are cross-sectionally
+  uncorrelated (the standard textbook approximation, not verified
+  against the real data).
+- Attribution's `contribution_to_return` is a linear approximation
+  (`exposure * factor_return`), documented as such since Stage 1 --
+  not an exact multiplicative P&L decomposition.
+- All data is synthetic; no real vendor adapter exists yet
+  (`data/real_adapters/` remains a stub, exactly as planned in Stage 1).
+- Out of scope by explicit instruction: portfolio optimization, full
+  transaction-cost modeling, order management, and anything beyond
+  this one engine's boundaries (the other six planned senior-quant
+  engines remain separate, untouched repos).
+
 ## Stage 1 -- Foundation: COMPLETE
 
 Schemas (point-in-time market/fundamental observations, universe,
@@ -267,7 +348,27 @@ already investigated and documented -- the orchestration layer
 reproduces, rather than contradicts, what each stage already found
 independently.
 
-## Next up: Stage 10 -- Hardening
+## Stage 10 -- Hardening: COMPLETE
 
-Full cross-stage integration/leak/reproducibility sweep, consolidated
-documentation and CLI workflows, final end-to-end demonstration.
+Added `tests/integration/test_full_system.py`:
+`test_extending_the_dataset_into_the_future_never_changes_an_earlier_full_pipeline_run`
+(the comprehensive, system-wide PIT check described in the Final
+Summary above) and
+`test_full_pipeline_reconciles_and_reproduces_on_the_default_scale_dataset`
+(the real default-scale, liquidity-filtered universe, not the
+`min_market_cap=0` relaxation most other tests use for simplicity).
+
+Added `tests/integration/test_cli_workflow.py`: runs every one of this
+repo's 9 CLI scripts in sequence, as real subprocesses with
+`subprocess.run`, exactly as a researcher would from the command line
+-- confirming the documented README workflow actually works, not just
+the underlying library functions in isolation.
+
+Registered the `slow` pytest marker (`pyproject.toml`) for the
+subprocess-based CLI test, which is slower than the rest of the suite
+but still runs by default.
+
+157 tests passing (was 154). Full leak-check clean across the whole
+repo. Pushed.
+
+**All 10 stages of the factor-model-engine build are now complete.**

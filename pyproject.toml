@@ -19,3 +19,8 @@ dev = ["pytest>=7.4"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: exercises real CLI subprocesses end to end; still run by default, just slower than the rest of the suite",
+]
